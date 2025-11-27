@@ -1,5 +1,21 @@
 node_modules
 dist
-.parcel-cache
+
+# pnpm
+.pnpm-store
+pnpm-lock.yaml
+
+# Vite
+*.local
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
 loaded.png
 play.png
