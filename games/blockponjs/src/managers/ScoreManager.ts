@@ -8,7 +8,9 @@ export class ScoreManager {
   constructor(private stage: any) {
     this.highScore = this.loadScore();
     this.scoreText = stage.text(30, 10, `Score ${this.score}`);
+    this.scoreText.fill("#ffffff");
     this.highScoreText = stage.text(120, 10, `High score ${this.highScore}`);
+    this.highScoreText.fill("#ffffff");
   }
 
   addScore() {
@@ -48,11 +50,11 @@ export class ScoreManager {
   }
 
   private saveScore(score: number) {
-    localStorage.setItem('score', JSON.stringify({ score }));
+    localStorage.setItem("score", JSON.stringify({ score }));
   }
 
   private loadScore(): number {
-    const result = localStorage.getItem('score');
+    const result = localStorage.getItem("score");
     if (result) {
       try {
         return JSON.parse(result).score;
