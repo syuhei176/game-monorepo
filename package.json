@@ -6,6 +6,7 @@
     "dev": "pnpm --filter landing dev",
     "dev:reversi": "pnpm --filter reversi dev",
     "dev:blockponjs": "pnpm --filter blockponjs dev",
+    "dev:sandsim": "pnpm --filter sandsim dev",
     "build": "pnpm -r build",
     "test:reversi": "pnpm --filter reversi test"
   },

@@ -23,6 +23,14 @@ const games: Game[] = [
     engine: "GraphicsJS",
     path: "/game-monorepo/blockponjs/",
   },
+  {
+    id: "sandsim",
+    name: "Sandsim",
+    description:
+      "Interactive powder physics simulation with sand, water, soil, and lava",
+    engine: "Canvas2D",
+    path: "/game-monorepo/sandsim/",
+  },
 ];
 
 function renderGameList() {
