@@ -3,7 +3,6 @@ dist
 
 # pnpm
 .pnpm-store
-pnpm-lock.yaml
 
 # Vite
 *.local
