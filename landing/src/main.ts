@@ -1,25 +1,32 @@
-import './style.css'
+import "./style.css";
 
 interface Game {
-  id: string
-  name: string
-  description: string
-  engine: string
-  path: string
+  id: string;
+  name: string;
+  description: string;
+  engine: string;
+  path: string;
 }
 
 const games: Game[] = [
   {
-    id: 'reversi',
-    name: 'Reversi',
-    description: 'Classic reversi game with AI opponent',
-    engine: 'Excalibur',
-    path: '/game-monorepo/reversi/'
+    id: "reversi",
+    name: "Reversi",
+    description: "Classic reversi game with AI opponent",
+    engine: "Excalibur",
+    path: "/game-monorepo/reversi/",
   },
-]
+  {
+    id: "blockponjs",
+    name: "BlockponJS",
+    description: "Breakout-style brick breaker with combo scoring system",
+    engine: "GraphicsJS",
+    path: "/game-monorepo/blockponjs/",
+  },
+];
 
 function renderGameList() {
-  const app = document.querySelector<HTMLDivElement>('#app')!
+  const app = document.querySelector<HTMLDivElement>("#app")!;
 
   app.innerHTML = `
     <div class="container">
@@ -29,7 +36,9 @@ function renderGameList() {
       </header>
 
       <main class="games-grid">
-        ${games.map(game => `
+        ${games
+          .map(
+            (game) => `
           <article class="game-card">
             <div class="game-info">
               <h2>${game.name}</h2>
@@ -38,7 +47,9 @@ function renderGameList() {
             </div>
             <a href="${game.path}" class="play-button">Play Now</a>
           </article>
-        `).join('')}
+        `,
+          )
+          .join("")}
       </main>
 
       <footer>
@@ -50,7 +61,7 @@ function renderGameList() {
         </p>
       </footer>
     </div>
-  `
+  `;
 }
 
-renderGameList()
+renderGameList();

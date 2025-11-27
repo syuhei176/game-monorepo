@@ -15,6 +15,19 @@ importers:
         specifier: ^7.2.4
         version: 7.2.4
 
+  games/blockponjs:
+    dependencies:
+      graphicsjs:
+        specifier: ^1.4.4
+        version: 1.4.4
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21
+
   games/reversi:
     dependencies:
       excalibur:
@@ -580,6 +593,9 @@ packages:
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
     deprecated: Glob versions prior to v9 are no longer supported
+
+  graphicsjs@1.4.4:
+    resolution: {integrity: sha512-MBsWktSIbV8mD+3PkRzcO/SjXAjsstzIfbqwHg52z3vJPYe4UxC7rfks1jtM6Q9U2JZDeUyjBJzeKeRFb6dm9w==}
 
   https-proxy-agent@5.0.0:
     resolution: {integrity: sha512-EkYm5BcKUGiduxzSt3Eppko+PiNWNEpa4ySk9vTC6wDsQJW9rHSa+UhGNJoRYp7bz6Ht1eaRIa6QaJqO5rCFbA==}
@@ -1256,6 +1272,8 @@ snapshots:
       minimatch: 3.1.2
       once: 1.4.0
       path-is-absolute: 1.0.1
+
+  graphicsjs@1.4.4: {}
 
   https-proxy-agent@5.0.0:
     dependencies:

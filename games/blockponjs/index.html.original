@@ -1,0 +1,391 @@
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"
+        />
+        <script src="https://cdn.tailwindcss.com"></script>
+        <title>GraphicsJS Basic Example</title>
+    </head>
+
+    <body>
+        <div class="mx-auto">
+            <div id="stage-container" style="width: 100%; height: 100%"></div>
+        </div>
+
+        <script src="graphics.min.js"></script>
+        <script>
+            var player = {
+                x: 100,
+                y: 332,
+                w: 78,
+                h: 20,
+                offset: 7,
+            };
+            var ball = {
+                x: 120,
+                y: 112,
+                r: 5,
+                dx: 0.0,
+                dy: 0.0,
+            };
+            var boxes = [];
+            for (var i = 0; i < 7; i++) {
+                for (var j = 0; j < 8; j++) {
+                    boxes.push({
+                        x: 70 + j * 32,
+                        y: 62 + i * 20,
+                        w: 30,
+                        h: 18,
+                    });
+                }
+            }
+            var score = 0;
+            var scoreChain = 0;
+            var phase = "start";
+            var speed = 2;
+            var playerRect = null,
+                ballRect = null,
+                scoreText = null,
+                highScoreText = null;
+            var stage = null,
+                mainLayer = null;
+            var browserSize = {
+                width: window.innerWidth || document.body.clientWidth,
+                height: window.innerHeight || document.body.clientHeight,
+            };
+
+            class GameStart {
+                init() {
+                    this.startRect = stage.rect(120, 260, 160, 30);
+                    this.startText = stage.text(145, 260, "Game Start", {
+                        fontSize: 20,
+                        fontColor: "#ffffff",
+                    });
+
+                    this.startRect.fill("#313131", 0.5);
+                    this.startRect.stroke("#707070", 0.5);
+                    mainLayer.addChild(this.startRect);
+                    mainLayer.addChild(this.startText);
+                    this.startRect.listen("click", next);
+                    this.startText.listen("click", next);
+
+                    function next() {
+                        moveToMain();
+                    }
+                }
+
+                remove() {
+                    this.startRect.remove();
+                    this.startText.remove();
+                }
+            }
+
+            let gameStart = new GameStart();
+
+            function saveScore(score) {
+                localStorage.setItem("score", JSON.stringify({ score }));
+            }
+            function loadScore() {
+                const result = localStorage.getItem("score");
+
+                if (result) {
+                    try {
+                        return JSON.parse(result).score;
+                    } catch (e) {
+                        return 0;
+                    }
+                } else {
+                    return 0;
+                }
+            }
+
+            window.addEventListener("load", function () {
+                // create a stage
+                stage = acgraph.create("stage-container", "100%", "100%");
+                mainLayer = stage.layer();
+                // draw a rectangle
+                var stageRect = stage.rect(30, 30, 340, 350);
+                stageRect.fill("#303030");
+                stageRect.stroke("#707070");
+                stageRect.listen(
+                    "touchstart",
+                    function (event) {
+                        console.log(event.clientX);
+                        var left = event.clientX < browserSize.width / 2;
+                        if (left) {
+                            moveLeft();
+                        } else {
+                            moveRight();
+                        }
+                    },
+                    { passive: false, useCapture: false },
+                );
+                stageRect.listen(
+                    "touchend",
+                    function (event) {
+                        stopLeft();
+                        stopRight();
+                    },
+                    { passive: false, useCapture: false },
+                );
+
+                const highscore = loadScore();
+
+                scoreText = stage.text(30, 10, "Score " + score);
+                highScoreText = stage.text(120, 10, "High score " + highscore);
+                playerRect = stage.rect(player.x, player.y, player.w, player.h);
+                ballRect = stage.circle(ball.x, ball.y, ball.r);
+                mainLayer.addChild(stageRect);
+
+                playerRect.fill("#ffffff");
+                playerRect.stroke("#707070");
+                ballRect.fill("#ffffff");
+                ballRect.stroke("#707070");
+
+                /*
+			boxes.map(function(box) {
+				var newBox = stage.rect(box.x, box.y, box.w, box.h);
+				mainLayer.addChild(newBox)
+				box.elem = newBox
+				box.deleted = false
+			})
+			*/
+                mainLayer.addChild(scoreText);
+                mainLayer.addChild(highScoreText);
+                mainLayer.addChild(playerRect);
+                mainLayer.addChild(ballRect);
+
+                var scaleFactor = Math.min(
+                    browserSize.width / 400,
+                    browserSize.height / 400,
+                );
+                mainLayer.scale(scaleFactor, scaleFactor, 0, 0);
+
+                moveToStart();
+                draw();
+            });
+
+            /*
+		addEventListener("resize", (event) => {
+			const scaleFactor = Math.min(window.innerWidth / 400, window.innerHeight / 400)
+			mainLayer.scaleByAnchor(scaleFactor, scaleFactor, 0, 0)
+		});
+		*/
+
+            addEventListener("keydown", function (e) {
+                if (e.keyCode == 37 || e.keyCode == 65) {
+                    moveLeft();
+                } else if (e.keyCode == 39 || e.keyCode == 68) {
+                    moveRight();
+                }
+
+                if (phase === "start") {
+                    moveToMain();
+                }
+            });
+            addEventListener("keyup", function (e) {
+                if (e.keyCode == 37 || e.keyCode == 65) {
+                    stopLeft();
+                } else if (e.keyCode == 39 || e.keyCode == 68) {
+                    stopRight();
+                }
+            });
+            function moveLeft() {
+                player.state = "left";
+            }
+            function moveRight() {
+                player.state = "right";
+            }
+            function stopLeft() {
+                player.state = "stop";
+            }
+            function stopRight() {
+                player.state = "stop";
+            }
+            function drawPlayer() {
+                if (player.state == "left") {
+                    player.x -= player.offset;
+                    if (player.x < 30) player.x = 30;
+                } else if (player.state == "right") {
+                    player.x += player.offset;
+                    if (player.x > 370 - player.w) player.x = 370 - player.w;
+                }
+                playerRect.setPosition(player.x, player.y);
+            }
+            function drawBall() {
+                ball.x += ball.dx;
+                if (hitBox()) {
+                    //横方向に当たった
+                    ball.x -= ball.dx;
+                    ball.dx *= -1;
+                }
+                ball.y += ball.dy;
+                if (hitBox()) {
+                    //縦方向に当たった
+                    ball.y -= ball.dy;
+                    ball.dy *= -1;
+                }
+                if (ball.x < 30) {
+                    ball.x = 30;
+                    ball.dx = Math.abs(ball.dx);
+                }
+                if (ball.x > 340) {
+                    ball.x = 340;
+                    ball.dx = -Math.abs(ball.dx);
+                }
+                if (ball.y < 30) {
+                    ball.y = 30;
+                    ball.dy = Math.abs(ball.dy);
+                }
+                if (
+                    ball.y > player.y - 11 &&
+                    ball.x + ball.r * 2 > player.x &&
+                    ball.x < player.x + player.w
+                ) {
+                    ball.y = player.y - 11;
+                    ball.dy = -Math.abs(ball.dy);
+                    var allLength = (player.w + ball.r) / 2;
+                    var r = ball.x + 5 - player.x - allLength;
+                    ball.dx += (r / allLength) * 1.2;
+                    var len = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                    ball.dx = (ball.dx / len) * speed;
+                    ball.dy = (ball.dy / len) * speed;
+                    scoreChain = 0;
+                }
+                if (ball.y > player.y + 20) {
+                    console.log("game over");
+                    moveToGameOver();
+                }
+                ballRect.setPosition(ball.x, ball.y);
+            }
+            function hitBox() {
+                return (
+                    boxes
+                        .filter(function (box) {
+                            return (
+                                box.deleted == false &&
+                                ball.x < box.x + box.w &&
+                                box.x < ball.x + ball.r * 2 &&
+                                ball.y < box.y + box.h &&
+                                box.y < ball.y + ball.r * 2
+                            );
+                        })
+                        .map(function (box) {
+                            box.elem.fill("#00ff00", 1);
+                            box.elem.remove();
+                            box.elem = null;
+                            box.deleted = true;
+                            score += Math.pow(2, scoreChain);
+                            scoreChain++;
+                            scoreText.text("Score " + score);
+                            if (
+                                boxes.filter(function (box) {
+                                    return !box.deleted;
+                                }) == 0
+                            ) {
+                                moveToClear();
+                            }
+                            return box;
+                        }).length > 0
+                );
+            }
+            function draw() {
+                switch (phase) {
+                    case "start":
+                        break;
+                    case "main":
+                        drawPlayer();
+                        drawBall();
+                        break;
+                    case "gameover":
+                        break;
+                    case "gameclear":
+                        break;
+                    default:
+                }
+                window.requestAnimationFrame(draw);
+            }
+            function clearBoxes() {
+                boxes.forEach(function (box) {
+                    if (box.elem) box.elem.remove();
+                    const newBox = stage.rect(box.x, box.y, box.w, box.h);
+                    newBox.fill("#707070");
+                    newBox.stroke("#707070");
+                    mainLayer.addChild(newBox);
+                    box.elem = newBox;
+                    box.deleted = false;
+                });
+            }
+            function moveToStart() {
+                gameStart.init();
+                phase = "start";
+            }
+            function moveToMain() {
+                gameStart.remove();
+
+                score = 0;
+                scoreChain = 0;
+                clearBoxes();
+                ball.x = 200;
+                ball.y = 200;
+                ball.dx = 0;
+                ball.dy = 1;
+                phase = "main";
+            }
+            function moveToGameOver() {
+                var gameoverRect = stage.rect(120, 260, 160, 30);
+                gameoverRect.fill("#aaa", 0.5);
+                var gameoverText = stage.text(145, 260, "Game Over", {
+                    fontSize: 20,
+                    fontColor: "#ffffff",
+                });
+                mainLayer.addChild(gameoverRect);
+                mainLayer.addChild(gameoverText);
+                gameoverRect.listen("click", next);
+                gameoverText.listen("click", next);
+                function next() {
+                    gameoverRect.remove();
+                    gameoverText.remove();
+                    moveToMain();
+                }
+                phase = "gameover";
+            }
+            function moveToClear() {
+                var gameoverRect = stage.rect(100, 260, 200, 30);
+                gameoverRect.fill("#aaa", 0.5);
+                var gameoverText = stage.text(120, 260, "Game Clear " + score, {
+                    fontSize: 20,
+                    fontColor: "#ffffff",
+                });
+                mainLayer.addChild(gameoverRect);
+                mainLayer.addChild(gameoverText);
+                gameoverRect.listen("click", next);
+                gameoverText.listen("click", next);
+                function next() {
+                    gameoverRect.remove();
+                    gameoverText.remove();
+                    moveToMain();
+                }
+                phase = "gameclear";
+
+                const highscore = loadScore();
+
+                if (score > highscore) {
+                    saveScore(score);
+                }
+            }
+            window.requestAnimationFrame =
+                window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame ||
+                function (callback) {
+                    console.log("Warn: old browser");
+                    setTimeout(callback, 100);
+                };
+        </script>
+    </body>
+</html>
