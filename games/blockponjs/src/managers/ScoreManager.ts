@@ -7,10 +7,12 @@ export class ScoreManager {
 
   constructor(private stage: any) {
     this.highScore = this.loadScore();
-    this.scoreText = stage.text(30, 10, `Score ${this.score}`);
-    this.scoreText.fill("#ffffff");
-    this.highScoreText = stage.text(120, 10, `High score ${this.highScore}`);
-    this.highScoreText.fill("#ffffff");
+    this.scoreText = stage.text(30, 10, `Score ${this.score}`, {
+      fontColor: "#ffffff",
+    });
+    this.highScoreText = stage.text(120, 10, `High score ${this.highScore}`, {
+      fontColor: "#ffffff",
+    });
   }
 
   addScore() {
