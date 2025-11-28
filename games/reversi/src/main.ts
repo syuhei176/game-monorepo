@@ -142,7 +142,7 @@ class Game extends Engine {
     const gridGraphic = new Canvas({
       width: 400,
       height: 400,
-      draw: (ctx: ExcaliburGraphicsContext) => {
+      draw: (ctx) => {
         ctx.drawImage(canvas, 0, 0);
       },
     });

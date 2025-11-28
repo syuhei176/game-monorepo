@@ -6,14 +6,17 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "npm run build && ex-test -d ../../dist/reversi -t ./test/test.js"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "npm run build && ex-test -d ../../dist/reversi -t ./test/test.js"
   },
   "dependencies": {
     "excalibur": "0.27.0"
   },
   "devDependencies": {
+    "@excaliburjs/testing": "0.25.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.0",
-    "@excaliburjs/testing": "0.25.1"
+    "vitest": "^4.0.14"
   }
 }
