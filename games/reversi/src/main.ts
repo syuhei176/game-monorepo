@@ -1,34 +1,161 @@
-import { Actor, Color, DisplayMode, Engine, Loader } from "excalibur";
+import {
+  Actor,
+  Color,
+  DisplayMode,
+  Engine,
+  Loader,
+  Canvas,
+  ExcaliburGraphicsContext,
+  Vector,
+  Label,
+  Font,
+  FontUnit,
+} from "excalibur";
 import { Cell } from "./cell";
 import { Resources } from "./resources";
-import { ReverseMap } from "./reverse";
-import { basicAICallback } from "./reverse/basic";
+import { ReverseMap, ReverseMapState } from "./reverse";
+import { smartAICallback } from "./reverse/smart";
 
 class Game extends Engine {
-  private reverseMap: ReverseMap
+  private reverseMap: ReverseMap;
+  private playerColorLabel: Label;
+  private currentTurnLabel: Label;
+  private resultLabel: Label | null = null;
 
   constructor() {
-    super({ width: 400, height: 400, backgroundColor: new Color(10, 120, 26) });
+    super({ width: 400, height: 480, backgroundColor: new Color(10, 120, 26) });
   }
 
   initialize() {
+    this.addGridLines();
+    this.addUILabels();
+
     this.reverseMap = new ReverseMap((x, y, color) => {
       this.add(new Cell(x, y, color));
-    })
+      if (this.reverseMap) {
+        this.updateTurnLabel();
+      }
+    });
 
-    this.reverseMap.setAI(basicAICallback)
+    this.reverseMap.setAI(smartAICallback);
+    this.reverseMap.setGameEndCallback((whiteCount, blackCount) => {
+      this.showGameResult(whiteCount, blackCount);
+    });
+    this.updateTurnLabel();
 
-    this.input.pointers.primary.on('down', (event) => {
+    this.input.pointers.primary.on("down", (event) => {
       // console.log(e)
       const x = Math.floor(event.worldPos.x / 50);
       const y = Math.floor(event.worldPos.y / 50);
 
       const player = this.reverseMap.current_color;
 
-      this.reverseMap.putWithAI(x, y, player)
-    })
+      this.reverseMap.putWithAI(x, y, player);
+    });
 
-    this.start()
+    this.start();
+  }
+
+  private addUILabels() {
+    this.playerColorLabel = new Label({
+      text: "あなた: 白",
+      pos: new Vector(200, 420),
+      font: new Font({
+        family: "sans-serif",
+        size: 20,
+        unit: FontUnit.Px,
+        color: Color.White,
+      }),
+    });
+    this.add(this.playerColorLabel);
+
+    this.currentTurnLabel = new Label({
+      text: "現在のターン: 白",
+      pos: new Vector(200, 450),
+      font: new Font({
+        family: "sans-serif",
+        size: 20,
+        unit: FontUnit.Px,
+        color: Color.White,
+      }),
+    });
+    this.add(this.currentTurnLabel);
+  }
+
+  private updateTurnLabel() {
+    const currentColor =
+      this.reverseMap.current_color === ReverseMapState.WHITE ? "白" : "黒";
+    this.currentTurnLabel.text = `現在のターン: ${currentColor}`;
+  }
+
+  private showGameResult(whiteCount: number, blackCount: number) {
+    this.currentTurnLabel.text = "ゲーム終了！";
+
+    let resultText = "";
+    if (whiteCount > blackCount) {
+      resultText = `あなたの勝ち！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    } else if (blackCount > whiteCount) {
+      resultText = `AIの勝ち！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    } else {
+      resultText = `引き分け！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    }
+
+    if (this.resultLabel) {
+      this.remove(this.resultLabel);
+    }
+
+    this.resultLabel = new Label({
+      text: resultText,
+      pos: new Vector(200, 200),
+      font: new Font({
+        family: "sans-serif",
+        size: 24,
+        unit: FontUnit.Px,
+        color: Color.Yellow,
+      }),
+      z: 100,
+    });
+    this.add(this.resultLabel);
+  }
+
+  private addGridLines() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext("2d")!;
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+
+    for (let i = 0; i <= 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 50, 0);
+      ctx.lineTo(i * 50, 400);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, i * 50);
+      ctx.lineTo(400, i * 50);
+      ctx.stroke();
+    }
+
+    const gridGraphic = new Canvas({
+      width: 400,
+      height: 400,
+      draw: (ctx: ExcaliburGraphicsContext) => {
+        ctx.drawImage(canvas, 0, 0);
+      },
+    });
+
+    const gridActor = new Actor({
+      x: 200,
+      y: 200,
+      z: -1,
+    });
+
+    gridActor.graphics.anchor = new Vector(0.5, 0.5);
+    gridActor.graphics.use(gridGraphic);
+    this.add(gridActor);
   }
 }
 

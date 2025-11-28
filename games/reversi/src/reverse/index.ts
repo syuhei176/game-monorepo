@@ -2,27 +2,34 @@ export enum ReverseMapState {
   BLOCK,
   EMPTY,
   WHITE,
-  BLACK
+  BLACK,
 }
 
-export type ChangeColorCallback = (x: number, y: number, color: ReverseMapState) => void
+export type ChangeColorCallback = (
+  x: number,
+  y: number,
+  color: ReverseMapState,
+) => void;
 
+export type GameEndCallback = (whiteCount: number, blackCount: number) => void;
 
-type AICallbackResult = { x: number, y: number }
+type AICallbackResult = { x: number; y: number };
 
-export type AICallback = (self: ReverseMap) => AICallbackResult
-
+export type AICallback = (self: ReverseMap) => AICallbackResult;
 
 export class ReverseMap {
-  data: number[]
-  current_color: ReverseMapState
-  changeColorCallback: ChangeColorCallback
-  aiCallback: AICallback | undefined
+  data: number[];
+  current_color: ReverseMapState;
+  changeColorCallback: ChangeColorCallback;
+  gameEndCallback: GameEndCallback | undefined;
+  aiCallback: AICallback | undefined;
+  isGameEnded: boolean;
 
   constructor(changeColorCallback: ChangeColorCallback) {
-    this.changeColorCallback = changeColorCallback
+    this.changeColorCallback = changeColorCallback;
     this.data = [];
     this.current_color = ReverseMapState.WHITE;
+    this.isGameEnded = false;
 
     for (var i = 0; i < 8 * 8; i++) this.data[i] = ReverseMapState.EMPTY;
 
@@ -30,109 +37,133 @@ export class ReverseMap {
     this.change_color(3, 4, ReverseMapState.WHITE);
     this.change_color(4, 3, ReverseMapState.WHITE);
     this.change_color(4, 4, ReverseMapState.BLACK);
-
   }
 
   putWithAI(x: number, y: number, color: ReverseMapState) {
-    const isTurnSucceed = this.put(x, y, color)
+    if (this.isGameEnded) return;
+
+    const isTurnSucceed = this.put(x, y, color);
 
     if (isTurnSucceed && this.aiCallback) {
-      const passRequired = this.checkPass(this.current_color)
+      const passRequired = this.checkPass(this.current_color);
 
       if (passRequired) {
         this.turn();
+        const aiPassRequired = this.checkPass(this.current_color);
+        if (aiPassRequired) {
+          this.endGame();
+          return;
+        }
+        this.putByAI();
       } else {
-        this.putByAI()
+        this.putByAI();
       }
     }
   }
 
   putByAI() {
     if (this.aiCallback) {
-      const result = this.aiCallback(this)
+      const result = this.aiCallback(this);
 
       setTimeout(() => {
-        this.put(result.x, result.y, this.current_color)
+        this.put(result.x, result.y, this.current_color);
 
-        const passRequired = this.checkPass(this.current_color)
+        const passRequired = this.checkPass(this.current_color);
 
         if (passRequired) {
-          this.turn()
-          this.putByAI()
+          this.turn();
+          const playerPassRequired = this.checkPass(this.current_color);
+          if (playerPassRequired) {
+            this.endGame();
+            return;
+          }
+          this.putByAI();
         }
-      }, 1000)
+      }, 1000);
     }
   }
-
 
   put(x: number, y: number, color: ReverseMapState) {
     if (this._put(x, y, color) > 0) {
       this.change_color(x, y, color);
       this.turn();
 
-      return true
+      return true;
     }
 
-    return false
+    return false;
   }
 
   checkPass(color: ReverseMapState) {
-    let availables = 0
-    let empty = 0
+    let availables = 0;
+    let empty = 0;
 
     for (let i = 0; i < 8; i++) {
       for (let j = 0; j < 8; j++) {
         let col = this.get_color(i, j);
         if (col === ReverseMapState.EMPTY) {
-          empty++
+          empty++;
         }
 
         if (this.check(i, j, color)) {
-          availables++
+          availables++;
         }
       }
     }
 
-    return empty > 0 && availables === 0
+    return empty > 0 && availables === 0;
   }
 
-
   check(x: number, y: number, color: ReverseMapState) {
-    return this._check(x, y, color, false)
+    return this._check(x, y, color, false);
   }
 
   _put(x: number, y: number, color: ReverseMapState) {
-    return this._check(x, y, color, true)
+    return this._check(x, y, color, true);
   }
 
   _check(x: number, y: number, color: ReverseMapState, isMutable: boolean) {
     var col = this.get_color(x, y);
 
     if (col !== ReverseMapState.EMPTY) {
-      return 0
+      return 0;
     }
 
-    return this.checkPart(x - 1, y, color, [-1, 0], isMutable) +
+    return (
+      this.checkPart(x - 1, y, color, [-1, 0], isMutable) +
       this.checkPart(x + 1, y, color, [1, 0], isMutable) +
       this.checkPart(x, y + 1, color, [0, 1], isMutable) +
       this.checkPart(x, y - 1, color, [0, -1], isMutable) +
       this.checkPart(x - 1, y - 1, color, [-1, -1], isMutable) +
       this.checkPart(x + 1, y + 1, color, [1, 1], isMutable) +
       this.checkPart(x - 1, y + 1, color, [-1, 1], isMutable) +
-      this.checkPart(x + 1, y - 1, color, [1, -1], isMutable);
+      this.checkPart(x + 1, y - 1, color, [1, -1], isMutable)
+    );
   }
 
-  checkPart(x: number, y: number, color: ReverseMapState, d: number[], isMutable: boolean) {
-    const r = this.checkPart2(x, y, color, d, isMutable)
+  checkPart(
+    x: number,
+    y: number,
+    color: ReverseMapState,
+    d: number[],
+    isMutable: boolean,
+  ) {
+    const r = this.checkPart2(x, y, color, d, isMutable);
 
     if (r < 0) {
-      return 0
+      return 0;
     }
 
-    return r
+    return r;
   }
 
-  checkPart2(x: number, y: number, color: ReverseMapState, d: number[], isMutable: boolean) {
+  checkPart2(
+    x: number,
+    y: number,
+    color: ReverseMapState,
+    d: number[],
+    isMutable: boolean,
+  ) {
     var col = this.get_color(x, y);
     if (col == ReverseMapState.BLOCK) {
       return -1;
@@ -152,19 +183,17 @@ export class ReverseMap {
       }
     }
 
-    return -1
+    return -1;
   }
 
   change_color(x: number, y: number, color: ReverseMapState) {
-    this.changeColorCallback(x, y, color)
+    this.changeColorCallback(x, y, color);
     this.set_color(x, y, color);
   }
 
   get_color(x: number, y: number) {
-    if (x >= 0 && y >= 0 && x < 8 && y < 8)
-      return this.data[x + y * 8];
-    else
-      return ReverseMapState.BLOCK;
+    if (x >= 0 && y >= 0 && x < 8 && y < 8) return this.data[x + y * 8];
+    else return ReverseMapState.BLOCK;
   }
 
   set_color = function (x: number, y: number, color: ReverseMapState) {
@@ -174,11 +203,40 @@ export class ReverseMap {
     } else {
       return ReverseMapState.BLOCK;
     }
-  }
-
+  };
 
   setAI(aiCallback: AICallback) {
-    this.aiCallback = aiCallback
+    this.aiCallback = aiCallback;
+  }
+
+  setGameEndCallback(callback: GameEndCallback) {
+    this.gameEndCallback = callback;
+  }
+
+  countPieces(): { white: number; black: number } {
+    let whiteCount = 0;
+    let blackCount = 0;
+
+    for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        const color = this.get_color(i, j);
+        if (color === ReverseMapState.WHITE) {
+          whiteCount++;
+        } else if (color === ReverseMapState.BLACK) {
+          blackCount++;
+        }
+      }
+    }
+
+    return { white: whiteCount, black: blackCount };
+  }
+
+  endGame() {
+    this.isGameEnded = true;
+    const counts = this.countPieces();
+    if (this.gameEndCallback) {
+      this.gameEndCallback(counts.white, counts.black);
+    }
   }
 
   turn() {
@@ -187,9 +245,5 @@ export class ReverseMap {
     } else if (this.current_color == ReverseMapState.BLACK) {
       this.current_color = ReverseMapState.WHITE;
     }
-
   }
 }
-
-
-
