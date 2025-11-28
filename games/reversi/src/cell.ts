@@ -115,7 +115,7 @@ export class Cell extends Actor {
     const imageSource = new Canvas({
       width: 40,
       height: 40,
-      draw: (ctx: ExcaliburGraphicsContext) => {
+      draw: (ctx) => {
         ctx.drawImage(canvas, 0, 0);
       },
     });
