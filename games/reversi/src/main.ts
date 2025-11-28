@@ -14,12 +14,13 @@ import {
 import { Cell } from "./cell";
 import { Resources } from "./resources";
 import { ReverseMap, ReverseMapState } from "./reverse";
-import { basicAICallback } from "./reverse/basic";
+import { smartAICallback } from "./reverse/smart";
 
 class Game extends Engine {
   private reverseMap: ReverseMap;
   private playerColorLabel: Label;
   private currentTurnLabel: Label;
+  private resultLabel: Label | null = null;
 
   constructor() {
     super({ width: 400, height: 480, backgroundColor: new Color(10, 120, 26) });
@@ -36,7 +37,10 @@ class Game extends Engine {
       }
     });
 
-    this.reverseMap.setAI(basicAICallback);
+    this.reverseMap.setAI(smartAICallback);
+    this.reverseMap.setGameEndCallback((whiteCount, blackCount) => {
+      this.showGameResult(whiteCount, blackCount);
+    });
     this.updateTurnLabel();
 
     this.input.pointers.primary.on("down", (event) => {
@@ -82,6 +86,36 @@ class Game extends Engine {
     const currentColor =
       this.reverseMap.current_color === ReverseMapState.WHITE ? "白" : "黒";
     this.currentTurnLabel.text = `現在のターン: ${currentColor}`;
+  }
+
+  private showGameResult(whiteCount: number, blackCount: number) {
+    this.currentTurnLabel.text = "ゲーム終了！";
+
+    let resultText = "";
+    if (whiteCount > blackCount) {
+      resultText = `あなたの勝ち！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    } else if (blackCount > whiteCount) {
+      resultText = `AIの勝ち！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    } else {
+      resultText = `引き分け！ (白: ${whiteCount}, 黒: ${blackCount})`;
+    }
+
+    if (this.resultLabel) {
+      this.remove(this.resultLabel);
+    }
+
+    this.resultLabel = new Label({
+      text: resultText,
+      pos: new Vector(200, 200),
+      font: new Font({
+        family: "sans-serif",
+        size: 24,
+        unit: FontUnit.Px,
+        color: Color.Yellow,
+      }),
+      z: 100,
+    });
+    this.add(this.resultLabel);
   }
 
   private addGridLines() {
