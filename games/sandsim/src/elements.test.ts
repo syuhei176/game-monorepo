@@ -163,9 +163,10 @@ describe("Individual Element Definitions", () => {
   });
 
   describe("PLANT", () => {
-    it("should be static", () => {
-      expect(ELEMENT_DEFINITIONS[PLANT].behaviorType).toBe("static");
+    it("should have custom behavior", () => {
+      expect(ELEMENT_DEFINITIONS[PLANT].behaviorType).toBe("custom");
       expect(ELEMENT_DEFINITIONS[PLANT].viscosity).toBe(0);
+      expect(ELEMENT_DEFINITIONS[PLANT].customUpdate).toBeDefined();
     });
 
     it("should have green color", () => {
@@ -270,10 +271,7 @@ describe("Custom Update Functions", () => {
         const fireUpdate = ELEMENT_DEFINITIONS[FIRE].customUpdate!;
         fireUpdate(5, 5, stage, testNextStage, mockUpdatePowder);
 
-        if (
-          testNextStage[4][5] === FIRE ||
-          testNextStage[6][5] === FIRE
-        ) {
+        if (testNextStage[4][5] === FIRE || testNextStage[6][5] === FIRE) {
           plantBurnedCount++;
         }
       }
