@@ -7,6 +7,7 @@ export const LAVA = 4;
 export const FIRE = 5;
 export const SEED = 6;
 export const PLANT = 7;
+export const STEAM = 8;
 
 export type PowderType =
   | typeof EMPTY
@@ -16,7 +17,8 @@ export type PowderType =
   | typeof LAVA
   | typeof FIRE
   | typeof SEED
-  | typeof PLANT;
+  | typeof PLANT
+  | typeof STEAM;
 
 // Interaction result - what elements should become after interaction
 export interface InteractionResult {
@@ -70,7 +72,7 @@ function updateFireElement(
   if (j > 0 && stage[i][j - 1] === EMPTY) {
     nextStage[i][j - 1] = FIRE;
     // Fire has a chance to disappear as it rises
-    if (Math.random() < 0.1) {
+    if (Math.random() < 0.02) {
       return;
     }
   } else if (j > 0 && stage[i][j - 1] === WATER) {
@@ -79,7 +81,7 @@ function updateFireElement(
     return;
   } else {
     // Fire stays briefly then disappears
-    if (Math.random() < 0.05) {
+    if (Math.random() < 0.02) {
       return;
     }
     nextStage[i][j] = FIRE;
@@ -223,6 +225,71 @@ function updateSeedElement(
   updatePowder(i, j, stage, nextStage, SEED, 2);
 }
 
+// Custom update function for steam
+function updateSteamElement(
+  i: number,
+  j: number,
+  stage: PowderType[][],
+  nextStage: PowderType[][],
+  updatePowder: any,
+): void {
+  // Steam rises upward
+  if (j > 0 && stage[i][j - 1] === EMPTY) {
+    // Steam rises and gradually condenses
+    const rand = Math.random();
+    if (rand < 0.005) {
+      // 0.5% chance to dissipate completely
+      return;
+    } else if (rand < 0.01) {
+      // 0.5% chance to condense to water
+      nextStage[i][j - 1] = WATER;
+    } else {
+      // 99% chance to continue rising as steam
+      nextStage[i][j - 1] = STEAM;
+    }
+    return;
+  }
+
+  // Steam blocked by non-empty cell above - mostly condense
+  if (j > 0 && stage[i][j - 1] !== EMPTY && stage[i][j - 1] !== STEAM) {
+    const rand = Math.random();
+    if (rand < 0.05) {
+      // 5% chance to dissipate
+      return;
+    } else if (rand < 0.75) {
+      // 70% chance to condense to water
+      nextStage[i][j] = WATER;
+      return;
+    }
+    // 25% chance to stay as steam
+  }
+
+  // At top boundary - mostly condense
+  if (j === 0) {
+    if (Math.random() < 0.2) {
+      // 20% chance to dissipate into air
+      return;
+    } else {
+      // 80% chance to condense to water
+      nextStage[i][j] = WATER;
+      return;
+    }
+  }
+
+  // Stalled steam - gradually condense
+  const rand = Math.random();
+  if (rand < 0.01) {
+    // 1% chance to dissipate
+    return;
+  } else if (rand < 0.15) {
+    // 14% chance to condense to water
+    nextStage[i][j] = WATER;
+  } else {
+    // 85% chance to stay as steam
+    nextStage[i][j] = STEAM;
+  }
+}
+
 // Element registry - single source of truth
 export const ELEMENT_DEFINITIONS: Record<PowderType, ElementDefinition> = {
   [EMPTY]: {
@@ -284,6 +351,14 @@ export const ELEMENT_DEFINITIONS: Record<PowderType, ElementDefinition> = {
     behaviorType: "custom",
     customUpdate: updatePlantElement,
   },
+  [STEAM]: {
+    id: STEAM,
+    name: "Steam",
+    color: { r: 200, g: 200, b: 200 },
+    viscosity: 0,
+    behaviorType: "custom",
+    customUpdate: updateSteamElement,
+  },
 };
 
 // Helper to get all selectable elements (excluding EMPTY)
@@ -296,14 +371,20 @@ export function getSelectableElements(): ElementDefinition[] {
 type InteractionMap = Map<string, InteractionResult>;
 
 const INTERACTIONS: InteractionMap = new Map([
-  // Lava + Water = Sand + Sand
-  [`${LAVA}_${WATER}`, { element1: SAND, element2: SAND }],
+  // Water + Lava = Steam + Sand (water evaporates, lava cools to sand)
+  // Key format: smaller ID first (WATER=2, LAVA=4)
+  [`${WATER}_${LAVA}`, { element1: STEAM, element2: SAND }],
 
   // Lava + Plant = Lava + Fire (plant burns, lava stays)
+  // Key format: smaller ID first (LAVA=4, PLANT=7)
   [
     `${LAVA}_${PLANT}`,
     { element1: LAVA, element2: FIRE, skipProcessing: true },
   ],
+
+  // Water + Fire = Steam + Fire (water evaporates)
+  // Key format: smaller ID first (WATER=2, FIRE=5)
+  [`${WATER}_${FIRE}`, { element1: STEAM, element2: FIRE }],
 ]);
 
 // Helper to create consistent interaction key (sorted)

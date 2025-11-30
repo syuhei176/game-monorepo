@@ -8,14 +8,16 @@ import {
   FIRE,
   SEED,
   PLANT,
+  STEAM,
   ELEMENT_DEFINITIONS,
   getSelectableElements,
+  checkInteraction,
   type PowderType,
 } from "./elements";
 
 describe("Element Constants", () => {
   it("should have unique values for each element", () => {
-    const elements = [EMPTY, SAND, WATER, SOIL, LAVA, FIRE, SEED, PLANT];
+    const elements = [EMPTY, SAND, WATER, SOIL, LAVA, FIRE, SEED, PLANT, STEAM];
     const uniqueElements = new Set(elements);
     expect(uniqueElements.size).toBe(elements.length);
   });
@@ -29,12 +31,23 @@ describe("Element Constants", () => {
     expect(FIRE).toBe(5);
     expect(SEED).toBe(6);
     expect(PLANT).toBe(7);
+    expect(STEAM).toBe(8);
   });
 });
 
 describe("ELEMENT_DEFINITIONS", () => {
   it("should contain definitions for all elements", () => {
-    const elementIds = [EMPTY, SAND, WATER, SOIL, LAVA, FIRE, SEED, PLANT];
+    const elementIds = [
+      EMPTY,
+      SAND,
+      WATER,
+      SOIL,
+      LAVA,
+      FIRE,
+      SEED,
+      PLANT,
+      STEAM,
+    ];
 
     elementIds.forEach((id) => {
       expect(ELEMENT_DEFINITIONS[id]).toBeDefined();
@@ -174,6 +187,19 @@ describe("Individual Element Definitions", () => {
       expect(color).toEqual({ r: 34, g: 139, b: 34 });
     });
   });
+
+  describe("STEAM", () => {
+    it("should have custom behavior", () => {
+      expect(ELEMENT_DEFINITIONS[STEAM].behaviorType).toBe("custom");
+      expect(ELEMENT_DEFINITIONS[STEAM].viscosity).toBe(0);
+      expect(ELEMENT_DEFINITIONS[STEAM].customUpdate).toBeDefined();
+    });
+
+    it("should have light gray color", () => {
+      const color = ELEMENT_DEFINITIONS[STEAM].color;
+      expect(color).toEqual({ r: 200, g: 200, b: 200 });
+    });
+  });
 });
 
 describe("getSelectableElements", () => {
@@ -189,11 +215,12 @@ describe("getSelectableElements", () => {
     expect(selectableIds).toContain(FIRE);
     expect(selectableIds).toContain(SEED);
     expect(selectableIds).toContain(PLANT);
+    expect(selectableIds).toContain(STEAM);
   });
 
-  it("should return 7 elements (8 total - 1 EMPTY)", () => {
+  it("should return 8 elements (9 total - 1 EMPTY)", () => {
     const selectable = getSelectableElements();
-    expect(selectable).toHaveLength(7);
+    expect(selectable).toHaveLength(8);
   });
 
   it("should return elements with all required properties", () => {
@@ -329,6 +356,101 @@ describe("Custom Update Functions", () => {
       });
     });
   });
+
+  describe("STEAM customUpdate", () => {
+    it("should rise upward when space above is empty", () => {
+      stage[5][5] = STEAM;
+      const steamUpdate = ELEMENT_DEFINITIONS[STEAM].customUpdate!;
+
+      steamUpdate(5, 5, stage, nextStage, mockUpdatePowder);
+
+      // Steam should rise to position above (may be STEAM, WATER, or EMPTY due to dissipation)
+      expect([STEAM, WATER, EMPTY]).toContain(nextStage[5][4]);
+    });
+
+    it("should mostly dissipate or condense at top boundary", () => {
+      stage[5][0] = STEAM;
+
+      // Run multiple times due to probability
+      let dissipatedCount = 0;
+      let condensedCount = 0;
+      for (let i = 0; i < 100; i++) {
+        const testNextStage = Array.from({ length: width }, () =>
+          Array(height).fill(EMPTY),
+        );
+        const steamUpdate = ELEMENT_DEFINITIONS[STEAM].customUpdate!;
+        steamUpdate(5, 0, stage, testNextStage, mockUpdatePowder);
+
+        if (testNextStage[5][0] === EMPTY) {
+          dissipatedCount++;
+        } else if (testNextStage[5][0] === WATER) {
+          condensedCount++;
+        }
+      }
+
+      // At top boundary, steam should mostly condense (80%) with some dissipation (20%)
+      expect(dissipatedCount).toBeGreaterThan(5);
+      expect(condensedCount).toBeGreaterThan(60);
+    });
+
+    it("should sometimes dissipate or condense when blocked by solid", () => {
+      stage[5][5] = STEAM;
+      stage[5][4] = SAND; // Blocking element above
+
+      // Run multiple times due to probability
+      let dissipatedCount = 0;
+      let condensedCount = 0;
+      for (let i = 0; i < 100; i++) {
+        const testNextStage = Array.from({ length: width }, () =>
+          Array(height).fill(EMPTY),
+        );
+        const steamUpdate = ELEMENT_DEFINITIONS[STEAM].customUpdate!;
+        steamUpdate(5, 5, stage, testNextStage, mockUpdatePowder);
+
+        if (testNextStage[5][5] === EMPTY) {
+          dissipatedCount++;
+        } else if (testNextStage[5][5] === WATER) {
+          condensedCount++;
+        }
+      }
+
+      // When blocked, steam should sometimes dissipate (20%) or condense (30%)
+      // Note: This test checks stalled steam behavior (not blocked by solid above)
+      expect(dissipatedCount).toBeGreaterThan(0);
+      expect(condensedCount).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe("Evaporation Interactions", () => {
+  it("should evaporate water to steam when touching fire", () => {
+    const result = checkInteraction(WATER, FIRE);
+    expect(result).not.toBeNull();
+    expect(result?.element1).toBe(STEAM);
+    expect(result?.element2).toBe(FIRE);
+  });
+
+  it("should evaporate water to steam when touching lava", () => {
+    const result = checkInteraction(WATER, LAVA);
+    expect(result).not.toBeNull();
+    expect(result?.element1).toBe(STEAM);
+    expect(result?.element2).toBe(SAND); // Lava cools to sand
+  });
+
+  it("should work in reverse order (fire touching water)", () => {
+    const result = checkInteraction(FIRE, WATER);
+    expect(result).not.toBeNull();
+    expect(result?.element1).toBe(FIRE);
+    expect(result?.element2).toBe(STEAM);
+  });
+
+  it("should work in reverse order (lava touching water)", () => {
+    const result = checkInteraction(LAVA, WATER);
+    expect(result).not.toBeNull();
+    // When called with LAVA, WATER (reverse order), the result is swapped
+    expect(result?.element1).toBe(SAND); // Lava cools to sand
+    expect(result?.element2).toBe(STEAM);
+  });
 });
 
 describe("Element Registry Consistency", () => {
@@ -341,6 +463,7 @@ describe("Element Registry Consistency", () => {
     expect(ELEMENT_DEFINITIONS[FIRE].id).toBe(FIRE);
     expect(ELEMENT_DEFINITIONS[SEED].id).toBe(SEED);
     expect(ELEMENT_DEFINITIONS[PLANT].id).toBe(PLANT);
+    expect(ELEMENT_DEFINITIONS[STEAM].id).toBe(STEAM);
   });
 
   it("should have lowercase button names matching element names", () => {

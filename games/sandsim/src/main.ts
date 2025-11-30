@@ -7,6 +7,7 @@ import {
   FIRE,
   SEED,
   PLANT,
+  STEAM,
   type PowderType,
   ELEMENT_DEFINITIONS,
   getSelectableElements,
@@ -15,7 +16,8 @@ import {
 
 const width = 300;
 const height = 300;
-let stage = initStage();
+const SAVE_KEY = "sandsim_save";
+let stage = loadStage() || initStage();
 let isMouseDown = false;
 let selectedPowderType: PowderType = SAND;
 let brushSize = 1; // Brush size in grid cells
@@ -31,6 +33,32 @@ function initStage(): PowderType[][] {
     stage[i].fill(EMPTY);
   }
   return stage;
+}
+
+function saveStage(): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(stage));
+  } catch (e) {
+    console.error("Failed to save:", e);
+  }
+}
+
+function loadStage(): PowderType[][] | null {
+  try {
+    const saved = localStorage.getItem(SAVE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("Failed to load:", e);
+  }
+  return null;
+}
+
+function resetStage(): void {
+  stage = initStage();
+  saveStage();
+  (window as any).stage = stage;
 }
 
 function putPowder(x: number, y: number, powder: PowderType): void {
@@ -261,15 +289,33 @@ window.onload = function () {
     }
   }
 
+  let frameCount = 0;
   function updateScreen(): void {
     if (!(window as any).pauseAnimation) {
       stage = update(stage);
       (window as any).stage = stage; // Update window reference for debugging
       draw(stage);
+
+      // Auto-save every 60 frames (approximately once per second at 60fps)
+      frameCount++;
+      if (frameCount >= 60) {
+        saveStage();
+        frameCount = 0;
+      }
     }
     requestAnimationFrame(updateScreen);
   }
   requestAnimationFrame(updateScreen);
+
+  // Reset button handler
+  const resetButton = document.getElementById("reset");
+  if (resetButton) {
+    resetButton.onclick = function () {
+      if (confirm("リセットしてもよろしいですか？")) {
+        resetStage();
+      }
+    };
+  }
 
   // Helper function to convert screen coordinates to grid coordinates
   function getGridCoordinates(
