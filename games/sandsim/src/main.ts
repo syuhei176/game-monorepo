@@ -1,21 +1,26 @@
-const EMPTY = 0;
-const SAND = 1;
-const WATER = 2;
-const SOIL = 3;
-const LAVA = 4;
-
-type PowderType =
-  | typeof EMPTY
-  | typeof SAND
-  | typeof WATER
-  | typeof SOIL
-  | typeof LAVA;
+import {
+  EMPTY,
+  SAND,
+  WATER,
+  SOIL,
+  LAVA,
+  FIRE,
+  SEED,
+  PLANT,
+  type PowderType,
+  ELEMENT_DEFINITIONS,
+  getSelectableElements,
+} from "./elements";
 
 const width = 300;
 const height = 300;
 let stage = initStage();
 let isMouseDown = false;
 let selectedPowderType: PowderType = SAND;
+
+// Expose for debugging/testing
+(window as any).stage = stage;
+(window as any).pauseAnimation = false;
 
 function initStage(): PowderType[][] {
   const stage: PowderType[][] = [];
@@ -27,7 +32,10 @@ function initStage(): PowderType[][] {
 }
 
 function putPowder(x: number, y: number, powder: PowderType): void {
-  stage[x][y] = powder;
+  // Boundary check
+  if (x >= 0 && x < width && y >= 0 && y < height) {
+    stage[x][y] = powder;
+  }
 }
 
 function updatePowder(
@@ -38,63 +46,62 @@ function updatePowder(
   powder: PowderType,
   maxP: number,
 ): void {
-  if (j < height) {
-    if (
-      (stage[i][j] === WATER && stage[i][j + 1] === LAVA) ||
-      (stage[i][j + 1] === WATER && stage[i][j] === LAVA)
-    ) {
-      nextStage[i][j] = SAND;
-      nextStage[i][j + 1] = SAND;
-      return;
-    }
-
-    for (let p = 0; p < maxP; p++) {
-      if (i + p >= width || j + p >= height) break;
-      if (i - p < 0 || j - p < 0) break;
-
-      if (stage[i + p][j + 1] === EMPTY) {
-        nextStage[i + p][j + 1] = powder;
-        return;
-      }
-
-      if (powder !== WATER) {
-        if (stage[i + p][j + 1] === WATER) {
-          nextStage[i + p][j + 1] = powder;
-          nextStage[i][j] = WATER;
-          return;
-        }
-      }
-
-      if (stage[i + p][j + 1] !== EMPTY && stage[i + p][j + 1] !== powder) {
-        break;
-      }
-    }
-
-    for (let p = 0; p < maxP; p++) {
-      if (i + p >= width || j + p >= height) break;
-      if (i - p < 0 || j - p < 0) break;
-
-      if (stage[i - p][j + 1] === EMPTY) {
-        nextStage[i - p][j + 1] = powder;
-        return;
-      }
-
-      if (powder !== WATER) {
-        if (stage[i - p][j + 1] === WATER) {
-          nextStage[i - p][j + 1] = powder;
-          nextStage[i][j] = WATER;
-          return;
-        }
-      }
-
-      if (stage[i - p][j + 1] !== EMPTY && stage[i - p][j + 1] !== powder) {
-        break;
-      }
-    }
-
+  // Check if we can fall down (j+1 must be within bounds)
+  if (j >= height - 1) {
+    // At bottom, stay in place
     if (nextStage[i][j] === EMPTY) {
       nextStage[i][j] = powder;
     }
+    return;
+  }
+
+  // Try to fall down-right with spread distance `maxP`
+  for (let p = 0; p < maxP; p++) {
+    if (i + p >= width) break;
+
+    if (stage[i + p][j + 1] === EMPTY) {
+      nextStage[i + p][j + 1] = powder;
+      return;
+    }
+
+    if (powder !== WATER) {
+      if (stage[i + p][j + 1] === WATER) {
+        nextStage[i + p][j + 1] = powder;
+        nextStage[i][j] = WATER;
+        return;
+      }
+    }
+
+    if (stage[i + p][j + 1] !== EMPTY && stage[i + p][j + 1] !== powder) {
+      break;
+    }
+  }
+
+  // Try to fall down-left with spread distance `maxP`
+  for (let p = 0; p < maxP; p++) {
+    if (i - p < 0) break;
+
+    if (stage[i - p][j + 1] === EMPTY) {
+      nextStage[i - p][j + 1] = powder;
+      return;
+    }
+
+    if (powder !== WATER) {
+      if (stage[i - p][j + 1] === WATER) {
+        nextStage[i - p][j + 1] = powder;
+        nextStage[i][j] = WATER;
+        return;
+      }
+    }
+
+    if (stage[i - p][j + 1] !== EMPTY && stage[i - p][j + 1] !== powder) {
+      break;
+    }
+  }
+
+  // Stay in place if nowhere to fall
+  if (nextStage[i][j] === EMPTY) {
+    nextStage[i][j] = powder;
   }
 }
 
@@ -102,18 +109,34 @@ function update(stage: PowderType[][]): PowderType[][] {
   const nextStage = initStage();
   for (let i = 0; i < width; i++) {
     for (let j = 0; j < height; j++) {
-      let viscosity = 0;
-      if (stage[i][j] === SAND) {
-        viscosity = 2;
-      } else if (stage[i][j] === WATER) {
-        viscosity = 20;
-      } else if (stage[i][j] === SOIL) {
-        viscosity = 1;
-      } else if (stage[i][j] === LAVA) {
-        viscosity = 5;
+      const powderType = stage[i][j];
+
+      // Skip empty cells - no need to process
+      if (powderType === EMPTY) {
+        continue;
       }
-      if (viscosity > 0) {
-        updatePowder(i, j, stage, nextStage, stage[i][j], viscosity);
+
+      const element = ELEMENT_DEFINITIONS[powderType];
+
+      // Special interaction: lava + water = sand
+      if (j < height - 1) {
+        if (
+          (stage[i][j] === WATER && stage[i][j + 1] === LAVA) ||
+          (stage[i][j + 1] === WATER && stage[i][j] === LAVA)
+        ) {
+          nextStage[i][j] = SAND;
+          nextStage[i][j + 1] = SAND;
+          continue;
+        }
+      }
+
+      // Dispatch based on behavior type
+      if (element.behaviorType === "static") {
+        nextStage[i][j] = powderType;
+      } else if (element.behaviorType === "falling") {
+        updatePowder(i, j, stage, nextStage, powderType, element.viscosity);
+      } else if (element.behaviorType === "custom" && element.customUpdate) {
+        element.customUpdate(i, j, stage, nextStage, updatePowder);
       }
     }
   }
@@ -133,6 +156,8 @@ function draw(stage: PowderType[][]): void {
     for (let i = 0; i < width; i++) {
       for (let j = 0; j < height; j++) {
         const powder = stage[i][j];
+        const element = ELEMENT_DEFINITIONS[powder];
+        const { r, g, b } = element.color;
 
         const indexes = [
           4 * (size * i + size * j * w),
@@ -142,32 +167,10 @@ function draw(stage: PowderType[][]): void {
         ];
 
         for (let index of indexes) {
-          if (powder === EMPTY) {
-            imgData.data[index] = 50;
-            imgData.data[index + 1] = 50;
-            imgData.data[index + 2] = 50;
-            imgData.data[index + 3] = 255;
-          } else if (powder === SAND) {
-            imgData.data[index] = 200;
-            imgData.data[index + 1] = 180;
-            imgData.data[index + 2] = 100;
-            imgData.data[index + 3] = 255;
-          } else if (powder === WATER) {
-            imgData.data[index] = 120;
-            imgData.data[index + 1] = 120;
-            imgData.data[index + 2] = 210;
-            imgData.data[index + 3] = 255;
-          } else if (powder === SOIL) {
-            imgData.data[index] = 100;
-            imgData.data[index + 1] = 100;
-            imgData.data[index + 2] = 100;
-            imgData.data[index + 3] = 255;
-          } else {
-            imgData.data[index] = 200;
-            imgData.data[index + 1] = 70;
-            imgData.data[index + 2] = 70;
-            imgData.data[index + 3] = 255;
-          }
+          imgData.data[index] = r;
+          imgData.data[index + 1] = g;
+          imgData.data[index + 2] = b;
+          imgData.data[index + 3] = 255;
         }
       }
     }
@@ -178,71 +181,101 @@ function draw(stage: PowderType[][]): void {
 
 window.onload = function () {
   const selected = document.getElementById("selected")!;
-  document.getElementById("sand")!.onclick = function () {
-    selectedPowderType = SAND;
-    selected.innerText = "Sand";
-  };
-  document.getElementById("water")!.onclick = function () {
-    selectedPowderType = WATER;
-    selected.innerText = "Water";
-  };
-  document.getElementById("soil")!.onclick = function () {
-    selectedPowderType = SOIL;
-    selected.innerText = "Soil";
-  };
-  document.getElementById("lava")!.onclick = function () {
-    selectedPowderType = LAVA;
-    selected.innerText = "Lava";
-  };
+  const canvas = document.getElementById("sample") as HTMLCanvasElement;
+
+  // Auto-generate button handlers from element registry
+  const selectableElements = getSelectableElements();
+
+  for (const element of selectableElements) {
+    const buttonId = element.name.toLowerCase();
+    const button = document.getElementById(buttonId);
+
+    if (button) {
+      // Create closure to capture element correctly
+      (function (elem) {
+        button.onclick = function () {
+          selectedPowderType = elem.id;
+          selected.innerText = elem.name;
+        };
+      })(element);
+    }
+  }
 
   function updateScreen(): void {
-    stage = update(stage);
-    draw(stage);
+    if (!(window as any).pauseAnimation) {
+      stage = update(stage);
+      (window as any).stage = stage; // Update window reference for debugging
+      draw(stage);
+    }
     requestAnimationFrame(updateScreen);
   }
   requestAnimationFrame(updateScreen);
-};
 
-// Mouse events
-window.onmousedown = function () {
-  isMouseDown = true;
-};
-
-window.onmousemove = function (e: MouseEvent) {
-  const target = e.target as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  if (isMouseDown) {
+  // Mouse events - attach to canvas only
+  canvas.onmousedown = function (e: MouseEvent) {
+    isMouseDown = true;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
-  }
-};
+  };
 
-window.onmouseup = function () {
-  isMouseDown = false;
-};
+  canvas.onmousemove = function (e: MouseEvent) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-// Touch events for mobile/tablet support
-window.ontouchstart = function (e: TouchEvent) {
-  e.preventDefault();
-  isMouseDown = true;
-};
+    if (isMouseDown) {
+      putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+    }
+  };
 
-window.ontouchmove = function (e: TouchEvent) {
-  e.preventDefault();
-  const touch = e.touches[0];
-  const target = touch.target as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
+  canvas.onmouseup = function () {
+    isMouseDown = false;
+  };
 
-  if (isMouseDown) {
-    putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
-  }
-};
+  window.onmouseup = function () {
+    isMouseDown = false;
+  };
 
-window.ontouchend = function (e: TouchEvent) {
-  e.preventDefault();
-  isMouseDown = false;
+  // Touch events for mobile/tablet support - attach to canvas only
+  // Use addEventListener with passive: false to allow preventDefault
+  canvas.addEventListener(
+    "touchstart",
+    function (e: TouchEvent) {
+      e.preventDefault();
+      isMouseDown = true;
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+    },
+    { passive: false },
+  );
+
+  canvas.addEventListener(
+    "touchmove",
+    function (e: TouchEvent) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      if (isMouseDown) {
+        putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+      }
+    },
+    { passive: false },
+  );
+
+  canvas.addEventListener(
+    "touchend",
+    function (e: TouchEvent) {
+      e.preventDefault();
+      isMouseDown = false;
+    },
+    { passive: false },
+  );
 };
