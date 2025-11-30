@@ -94,6 +94,93 @@ function updateFireElement(
   }
 }
 
+// Custom update function for plant
+function updatePlantElement(
+  i: number,
+  j: number,
+  stage: PowderType[][],
+  nextStage: PowderType[][],
+  updatePowder: any,
+): void {
+  const width = stage.length;
+  const height = stage[0].length;
+
+  // Plant stays in place
+  nextStage[i][j] = PLANT;
+
+  // Count nearby plants to limit growth
+  let nearbyPlants = 0;
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const x = i + dx;
+      const y = j + dy;
+      if (
+        x >= 0 &&
+        x < width &&
+        y >= 0 &&
+        y < height &&
+        stage[x][y] === PLANT
+      ) {
+        nearbyPlants++;
+      }
+    }
+  }
+
+  // Check if there's water nearby (encourages growth)
+  let hasWaterNearby = false;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const x = i + dx;
+      const y = j + dy;
+      if (
+        x >= 0 &&
+        x < width &&
+        y >= 0 &&
+        y < height &&
+        stage[x][y] === WATER
+      ) {
+        hasWaterNearby = true;
+        break;
+      }
+    }
+    if (hasWaterNearby) break;
+  }
+
+  // Don't grow if too crowded (more than 8 plants nearby)
+  if (nearbyPlants > 8) {
+    return;
+  }
+
+  // Growth probabilities (higher with water)
+  const upwardGrowthChance = hasWaterNearby ? 0.03 : 0.01;
+  const horizontalGrowthChance = hasWaterNearby ? 0.015 : 0.005;
+
+  // Plant grows upward (j - 1 is above)
+  if (
+    j > 0 &&
+    stage[i][j - 1] === EMPTY &&
+    Math.random() < upwardGrowthChance
+  ) {
+    nextStage[i][j - 1] = PLANT;
+  }
+
+  // Also spread horizontally occasionally
+  if (
+    i > 0 &&
+    stage[i - 1][j] === EMPTY &&
+    Math.random() < horizontalGrowthChance
+  ) {
+    nextStage[i - 1][j] = PLANT;
+  }
+  if (
+    i < width - 1 &&
+    stage[i + 1][j] === EMPTY &&
+    Math.random() < horizontalGrowthChance
+  ) {
+    nextStage[i + 1][j] = PLANT;
+  }
+}
+
 // Custom update function for seed
 function updateSeedElement(
   i: number,
@@ -116,6 +203,9 @@ function updateSeedElement(
     if (x >= 0 && x < width && y >= 0 && y < height) {
       if (stage[x][y] === SOIL) {
         // Seed grows into plant when touching soil
+        console.log(
+          `Seed at [${i}][${j}] found soil at [${x}][${y}], growing into plant`,
+        );
         nextStage[i][j] = PLANT;
         return;
       }
@@ -184,7 +274,8 @@ export const ELEMENT_DEFINITIONS: Record<PowderType, ElementDefinition> = {
     name: "Plant",
     color: { r: 34, g: 139, b: 34 },
     viscosity: 0,
-    behaviorType: "static",
+    behaviorType: "custom",
+    customUpdate: updatePlantElement,
   },
 };
 
