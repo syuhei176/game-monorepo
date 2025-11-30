@@ -18,6 +18,13 @@ export type PowderType =
   | typeof SEED
   | typeof PLANT;
 
+// Interaction result - what elements should become after interaction
+export interface InteractionResult {
+  element1: PowderType; // What the first element becomes
+  element2: PowderType; // What the second element becomes
+  skipProcessing?: boolean; // Should we skip normal element processing?
+}
+
 interface RGB {
   r: number;
   g: number;
@@ -282,4 +289,51 @@ export const ELEMENT_DEFINITIONS: Record<PowderType, ElementDefinition> = {
 // Helper to get all selectable elements (excluding EMPTY)
 export function getSelectableElements(): ElementDefinition[] {
   return Object.values(ELEMENT_DEFINITIONS).filter((e) => e.id !== EMPTY);
+}
+
+// Special interactions registry - defines how elements interact with each other
+// Key format: "elementA_elementB" where elementA <= elementB (sorted)
+type InteractionMap = Map<string, InteractionResult>;
+
+const INTERACTIONS: InteractionMap = new Map([
+  // Lava + Water = Sand + Sand
+  [`${LAVA}_${WATER}`, { element1: SAND, element2: SAND }],
+
+  // Lava + Plant = Lava + Fire (plant burns, lava stays)
+  [
+    `${LAVA}_${PLANT}`,
+    { element1: LAVA, element2: FIRE, skipProcessing: true },
+  ],
+]);
+
+// Helper to create consistent interaction key (sorted)
+function getInteractionKey(element1: PowderType, element2: PowderType): string {
+  return element1 <= element2
+    ? `${element1}_${element2}`
+    : `${element2}_${element1}`;
+}
+
+// Check if two elements have a special interaction
+export function checkInteraction(
+  element1: PowderType,
+  element2: PowderType,
+): InteractionResult | null {
+  const key = getInteractionKey(element1, element2);
+  const interaction = INTERACTIONS.get(key);
+
+  if (!interaction) {
+    return null;
+  }
+
+  // Return the interaction with elements in the correct order
+  if (element1 <= element2) {
+    return interaction;
+  } else {
+    // Swap if elements were reversed
+    return {
+      element1: interaction.element2,
+      element2: interaction.element1,
+      skipProcessing: interaction.skipProcessing,
+    };
+  }
 }

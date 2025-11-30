@@ -10,6 +10,7 @@ import {
   type PowderType,
   ELEMENT_DEFINITIONS,
   getSelectableElements,
+  checkInteraction,
 } from "./elements";
 
 const width = 300;
@@ -130,21 +131,8 @@ function update(stage: PowderType[][]): PowderType[][] {
 
       const element = ELEMENT_DEFINITIONS[powderType];
 
-      // Special interaction: lava + water = sand
-      if (j < height - 1) {
-        if (
-          (stage[i][j] === WATER && stage[i][j + 1] === LAVA) ||
-          (stage[i][j + 1] === WATER && stage[i][j] === LAVA)
-        ) {
-          nextStage[i][j] = SAND;
-          nextStage[i][j + 1] = SAND;
-          continue;
-        }
-      }
-
-      // Special interaction: lava + plant = fire
-      // Check all 4 adjacent cells for lava-plant interaction
-      let lavaPlantInteraction = false;
+      // Check for special interactions with adjacent cells
+      let skipProcessing = false;
       const adjacentCells = [
         [i, j - 1], // above
         [i, j + 1], // below
@@ -154,24 +142,30 @@ function update(stage: PowderType[][]): PowderType[][] {
 
       for (const [x, y] of adjacentCells) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
-          if (
-            (stage[i][j] === LAVA && stage[x][y] === PLANT) ||
-            (stage[i][j] === PLANT && stage[x][y] === LAVA)
-          ) {
-            // Plant turns into fire, lava stays
-            if (stage[i][j] === PLANT) {
-              nextStage[i][j] = FIRE;
-              lavaPlantInteraction = true;
+          const adjacentType = stage[x][y];
+
+          // Check if there's a special interaction
+          const interaction = checkInteraction(powderType, adjacentType);
+
+          if (interaction) {
+            // Apply the interaction results
+            if (nextStage[i][j] === EMPTY) {
+              nextStage[i][j] = interaction.element1;
             }
-            if (stage[x][y] === PLANT && nextStage[x][y] === EMPTY) {
-              nextStage[x][y] = FIRE;
+            if (nextStage[x][y] === EMPTY) {
+              nextStage[x][y] = interaction.element2;
+            }
+
+            // Mark to skip normal processing if needed
+            if (interaction.skipProcessing) {
+              skipProcessing = true;
             }
           }
         }
       }
 
-      // Skip normal processing if plant turned into fire
-      if (lavaPlantInteraction) {
+      // Skip normal processing if interaction requested it
+      if (skipProcessing) {
         continue;
       }
 
