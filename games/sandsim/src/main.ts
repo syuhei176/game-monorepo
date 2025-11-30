@@ -17,6 +17,7 @@ const height = 300;
 let stage = initStage();
 let isMouseDown = false;
 let selectedPowderType: PowderType = SAND;
+let brushSize = 1; // Brush size in grid cells
 
 // Expose for debugging/testing
 (window as any).stage = stage;
@@ -32,9 +33,20 @@ function initStage(): PowderType[][] {
 }
 
 function putPowder(x: number, y: number, powder: PowderType): void {
-  // Boundary check
-  if (x >= 0 && x < width && y >= 0 && y < height) {
-    stage[x][y] = powder;
+  // Apply brush size - draw a circle of powder
+  const radius = Math.floor(brushSize / 2);
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      // Check if within circular brush
+      if (dx * dx + dy * dy <= radius * radius) {
+        const px = x + dx;
+        const py = y + dy;
+        // Boundary check
+        if (px >= 0 && px < width && py >= 0 && py < height) {
+          stage[px][py] = powder;
+        }
+      }
+    }
   }
 }
 
@@ -182,22 +194,43 @@ function draw(stage: PowderType[][]): void {
 window.onload = function () {
   const selected = document.getElementById("selected")!;
   const canvas = document.getElementById("sample") as HTMLCanvasElement;
+  const brushSizeInput = document.getElementById(
+    "brushSize",
+  ) as HTMLInputElement;
+  const brushSizeValue = document.getElementById("brushSizeValue")!;
+
+  // Initialize brush size
+  brushSize = parseInt(brushSizeInput.value);
+
+  // Brush size control
+  brushSizeInput.oninput = function () {
+    brushSize = parseInt(brushSizeInput.value);
+    brushSizeValue.innerText = brushSize.toString();
+  };
 
   // Auto-generate button handlers from element registry
   const selectableElements = getSelectableElements();
+  const buttons: { [key: string]: HTMLElement } = {};
 
   for (const element of selectableElements) {
     const buttonId = element.name.toLowerCase();
     const button = document.getElementById(buttonId);
 
     if (button) {
+      buttons[buttonId] = button;
+
       // Create closure to capture element correctly
-      (function (elem) {
-        button.onclick = function () {
+      (function (elem, btn, btnId) {
+        btn.onclick = function () {
+          // Update selected element
           selectedPowderType = elem.id;
           selected.innerText = elem.name;
+
+          // Update button styles
+          Object.values(buttons).forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
         };
-      })(element);
+      })(element, button, buttonId);
     }
   }
 
