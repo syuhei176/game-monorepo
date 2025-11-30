@@ -142,6 +142,39 @@ function update(stage: PowderType[][]): PowderType[][] {
         }
       }
 
+      // Special interaction: lava + plant = fire
+      // Check all 4 adjacent cells for lava-plant interaction
+      let lavaPlantInteraction = false;
+      const adjacentCells = [
+        [i, j - 1], // above
+        [i, j + 1], // below
+        [i - 1, j], // left
+        [i + 1, j], // right
+      ];
+
+      for (const [x, y] of adjacentCells) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          if (
+            (stage[i][j] === LAVA && stage[x][y] === PLANT) ||
+            (stage[i][j] === PLANT && stage[x][y] === LAVA)
+          ) {
+            // Plant turns into fire, lava stays
+            if (stage[i][j] === PLANT) {
+              nextStage[i][j] = FIRE;
+              lavaPlantInteraction = true;
+            }
+            if (stage[x][y] === PLANT && nextStage[x][y] === EMPTY) {
+              nextStage[x][y] = FIRE;
+            }
+          }
+        }
+      }
+
+      // Skip normal processing if plant turned into fire
+      if (lavaPlantInteraction) {
+        continue;
+      }
+
       // Dispatch based on behavior type
       if (element.behaviorType === "static") {
         nextStage[i][j] = powderType;
@@ -244,22 +277,42 @@ window.onload = function () {
   }
   requestAnimationFrame(updateScreen);
 
+  // Helper function to convert screen coordinates to grid coordinates
+  function getGridCoordinates(
+    clientX: number,
+    clientY: number,
+  ): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect();
+    // Calculate the position relative to the canvas
+    const canvasX = clientX - rect.left;
+    const canvasY = clientY - rect.top;
+
+    // Calculate the scale factor between displayed size and actual canvas size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Convert to canvas coordinates
+    const actualX = canvasX * scaleX;
+    const actualY = canvasY * scaleY;
+
+    // Convert to grid coordinates (canvas is 600x600, grid is 300x300, so divide by 2)
+    const gridX = Math.floor(actualX / 2);
+    const gridY = Math.floor(actualY / 2);
+
+    return { x: gridX, y: gridY };
+  }
+
   // Mouse events - attach to canvas only
   canvas.onmousedown = function (e: MouseEvent) {
     isMouseDown = true;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+    const coords = getGridCoordinates(e.clientX, e.clientY);
+    putPowder(coords.x, coords.y, selectedPowderType);
   };
 
   canvas.onmousemove = function (e: MouseEvent) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     if (isMouseDown) {
-      putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+      const coords = getGridCoordinates(e.clientX, e.clientY);
+      putPowder(coords.x, coords.y, selectedPowderType);
     }
   };
 
@@ -279,10 +332,8 @@ window.onload = function () {
       e.preventDefault();
       isMouseDown = true;
       const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+      const coords = getGridCoordinates(touch.clientX, touch.clientY);
+      putPowder(coords.x, coords.y, selectedPowderType);
     },
     { passive: false },
   );
@@ -291,13 +342,10 @@ window.onload = function () {
     "touchmove",
     function (e: TouchEvent) {
       e.preventDefault();
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-
       if (isMouseDown) {
-        putPowder(Math.floor(x / 2), Math.floor(y / 2), selectedPowderType);
+        const touch = e.touches[0];
+        const coords = getGridCoordinates(touch.clientX, touch.clientY);
+        putPowder(coords.x, coords.y, selectedPowderType);
       }
     },
     { passive: false },
