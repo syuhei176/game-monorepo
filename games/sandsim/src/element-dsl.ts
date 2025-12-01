@@ -8,6 +8,7 @@ export type Condition =
   | "left_is_empty"
   | "right_is_empty"
   | "above_is_water"
+  | "above_is_blocked"
   | "at_top_boundary"
   | "at_bottom_boundary"
   | { adjacent_is: PowderType }

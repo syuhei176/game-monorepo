@@ -10,7 +10,7 @@ import type {
 } from "./element-dsl";
 import type { PowderType } from "./element-constants";
 import type { ElementDefinition, InteractionResult } from "./elements";
-import { EMPTY, WATER, PLANT } from "./element-constants";
+import { EMPTY, WATER, PLANT, STEAM } from "./element-constants";
 
 type UpdateFunction = (
   i: number,
@@ -49,6 +49,13 @@ function checkCondition(
         return i < width - 1 && stage[i + 1][j] === EMPTY;
       case "above_is_water":
         return j > 0 && stage[i][j - 1] === WATER;
+      case "above_is_blocked":
+        // Check if above is blocked by non-empty, non-steam cell
+        if (j > 0) {
+          const aboveCell = stage[i][j - 1];
+          return aboveCell !== EMPTY && aboveCell !== STEAM;
+        }
+        return false;
       case "at_top_boundary":
         return j === 0;
       case "at_bottom_boundary":
@@ -297,29 +304,42 @@ function compileBehavior(
 
     // Process rules
     if (behavior.rules) {
+      // Collect all matching rules with their actions
+      const matchingActions: Array<{ action: Action; probability: number }> =
+        [];
+      let hasOtherwiseRule = false;
+
       for (const rule of behavior.rules) {
         // Check condition
-        if (rule.condition && !checkCondition(rule.condition, i, j, stage)) {
-          continue;
-        }
-
-        // No condition means "otherwise"
-        if (!rule.condition && actionTaken) {
-          continue;
-        }
-
-        // Try each action with its probability
-        for (const { action, probability } of rule.actions) {
-          if (Math.random() < probability) {
-            if (executeAction(action, i, j, stage, nextStage, elementId)) {
-              actionTaken = true;
-              break;
-            }
+        if (rule.condition) {
+          if (checkCondition(rule.condition, i, j, stage)) {
+            matchingActions.push(...rule.actions);
+          }
+        } else {
+          // Otherwise rule - save for later
+          hasOtherwiseRule = true;
+          if (matchingActions.length === 0) {
+            matchingActions.push(...rule.actions);
           }
         }
+      }
 
-        if (actionTaken) {
-          break;
+      // Calculate total probability and select one action probabilistically
+      if (matchingActions.length > 0) {
+        const totalProbability = matchingActions.reduce(
+          (sum, a) => sum + a.probability,
+          0,
+        );
+        let random = Math.random() * totalProbability;
+
+        for (const { action, probability } of matchingActions) {
+          random -= probability;
+          if (random <= 0) {
+            if (executeAction(action, i, j, stage, nextStage, elementId)) {
+              actionTaken = true;
+            }
+            break;
+          }
         }
       }
     }
