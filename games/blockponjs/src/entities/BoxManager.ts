@@ -1,61 +1,114 @@
-import { Box, BallState } from '../types';
+import { Box, BallState } from "../types";
+
+const STAGE_COLORS = {
+  1: "#707070",
+  2: "#5a705a",
+  3: "#705a5a",
+};
 
 export class BoxManager {
   private boxes: Box[] = [];
+  private stageLayouts: any[][][] = [
+    // Stage 1
+    [
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+    ],
+    // Stage 2
+    [
+      [2, 1, 1, 1, 1, 1, 1, 2],
+      [1, 2, 1, 1, 1, 1, 2, 1],
+      [1, 1, 2, 1, 1, 2, 1, 1],
+      [1, 1, 1, 2, 2, 1, 1, 1],
+    ],
+    // Stage 3
+    [
+      [3, 2, 1, 1, 1, 1, 2, 3],
+      [2, 3, 2, 1, 1, 2, 3, 2],
+      [1, 2, 3, 2, 2, 3, 2, 1],
+    ],
+  ];
 
-  constructor(private stage: any, private mainLayer: any) {
-    this.initializeBoxes();
-  }
+  constructor(
+    private stage: any,
+    private mainLayer: any,
+  ) {}
 
-  private initializeBoxes() {
-    // Create 7x8 grid of boxes
-    for (let i = 0; i < 7; i++) {
-      for (let j = 0; j < 8; j++) {
-        this.boxes.push({
-          x: 70 + j * 32,
-          y: 62 + i * 20,
-          w: 30,
-          h: 18,
-          elem: null,
-          deleted: false,
-        });
+  private initializeBoxes(stageNum: number = 1) {
+    this.boxes = [];
+    const layout =
+      this.stageLayouts[stageNum - 1] ||
+      this.stageLayouts[this.stageLayouts.length - 1];
+
+    for (let i = 0; i < layout.length; i++) {
+      for (let j = 0; j < layout[i].length; j++) {
+        const hp = layout[i][j];
+        if (hp > 0) {
+          this.boxes.push({
+            x: 70 + j * 32,
+            y: 82 + i * 20,
+            w: 30,
+            h: 18,
+            hp: hp,
+            elem: null,
+            deleted: false,
+          });
+        }
       }
     }
   }
 
-  render() {
+  private render() {
     this.boxes.forEach((box) => {
       if (box.elem) {
         box.elem.remove();
       }
       const newBox = this.stage.rect(box.x, box.y, box.w, box.h);
-      newBox.fill('#707070');
-      newBox.stroke('#707070');
+      this.setBoxColor(newBox, box.hp);
+      newBox.stroke("#707070");
       this.mainLayer.addChild(newBox);
       box.elem = newBox;
       box.deleted = false;
     });
   }
 
+  private setBoxColor(boxElement: any, hp: number) {
+    const color = STAGE_COLORS[hp] || STAGE_COLORS[1];
+    boxElement.fill(color);
+  }
+
   checkCollision(ball: BallState, onBoxHit: () => void): boolean {
+    const ballAABB = {
+      x: ball.x - ball.r,
+      y: ball.y - ball.r,
+      w: ball.r * 2,
+      h: ball.r * 2,
+    };
+
     const collidedBoxes = this.boxes.filter(
       (box) =>
         !box.deleted &&
-        ball.x < box.x + box.w &&
-        box.x < ball.x + ball.r * 2 &&
-        ball.y < box.y + box.h &&
-        box.y < ball.y + ball.r * 2
+        ballAABB.x < box.x + box.w &&
+        ballAABB.x + ballAABB.w > box.x &&
+        ballAABB.y < box.y + box.h &&
+        ballAABB.y + ballAABB.h > box.y,
     );
 
     if (collidedBoxes.length > 0) {
       collidedBoxes.forEach((box) => {
-        if (box.elem) {
-          box.elem.fill('#00ff00', 1);
-          box.elem.remove();
-          box.elem = null;
-        }
-        box.deleted = true;
+        box.hp--;
         onBoxHit();
+
+        if (box.hp <= 0) {
+          if (box.elem) {
+            box.elem.remove();
+            box.elem = null;
+          }
+          box.deleted = true;
+        } else {
+          this.setBoxColor(box.elem, box.hp);
+        }
       });
       return true;
     }
@@ -67,7 +120,8 @@ export class BoxManager {
     return this.boxes.every((box) => box.deleted);
   }
 
-  reset() {
+  reset(stage: number) {
+    this.initializeBoxes(stage);
     this.render();
   }
 }

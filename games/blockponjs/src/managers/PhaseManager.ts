@@ -65,7 +65,26 @@ export class PhaseManager {
     this.currentPhase = "gameover";
   }
 
-  showGameClear(score: number, onRestart: () => void) {
+  showStageClear(stageNum: number, onNextStage: () => void) {
+    const stageClearText = this.stage.text(
+      145,
+      350,
+      `Stage ${stageNum} Clear!`,
+      {
+        fontSize: 20,
+        fontColor: "#ffffff",
+      },
+    );
+    this.mainLayer.addChild(stageClearText);
+    this.currentPhase = "gameclear";
+
+    setTimeout(() => {
+      stageClearText.remove();
+      onNextStage();
+    }, 2000);
+  }
+
+  showAllStagesClear(score: number, onRestart: () => void) {
     const gameclearRect = this.stage.rect(100, 350, 200, 30);
     gameclearRect.fill("#aaa", 0.5);
     const gameclearText = this.stage.text(120, 350, `Game Clear ${score}`, {

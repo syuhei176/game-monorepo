@@ -1,11 +1,14 @@
-import { BallState, PlayerState } from '../types';
+import { BallState, PlayerState } from "../types";
 
 export class Ball {
   private state: BallState;
   private circle: any;
   private speed: number = 2;
 
-  constructor(private stage: any, private mainLayer: any) {
+  constructor(
+    private stage: any,
+    private mainLayer: any,
+  ) {
     this.state = {
       x: 120,
       y: 112,
@@ -15,8 +18,8 @@ export class Ball {
     };
 
     this.circle = stage.circle(this.state.x, this.state.y, this.state.r);
-    this.circle.fill('#ffffff');
-    this.circle.stroke('#707070');
+    this.circle.fill("#ffffff");
+    this.circle.stroke("#707070");
     mainLayer.addChild(this.circle);
   }
 
@@ -24,7 +27,7 @@ export class Ball {
     player: PlayerState,
     checkBoxCollision: () => boolean,
     onPaddleHit: () => void,
-    onGameOver: () => void
+    onGameOver: () => void,
   ) {
     // Move horizontally first, check collision
     this.state.x += this.state.dx;
@@ -69,7 +72,9 @@ export class Ball {
       this.state.dx += (r / allLength) * 1.2;
 
       // Normalize to maintain constant speed
-      const len = Math.sqrt(this.state.dx * this.state.dx + this.state.dy * this.state.dy);
+      const len = Math.sqrt(
+        this.state.dx * this.state.dx + this.state.dy * this.state.dy,
+      );
       this.state.dx = (this.state.dx / len) * this.speed;
       this.state.dy = (this.state.dy / len) * this.speed;
 
@@ -90,6 +95,16 @@ export class Ball {
     this.state.dx = 0;
     this.state.dy = 1;
     this.circle.setPosition(this.state.x, this.state.y);
+
+    const len = Math.sqrt(
+      this.state.dx * this.state.dx + this.state.dy * this.state.dy,
+    );
+    this.state.dx = (this.state.dx / len) * this.speed;
+    this.state.dy = (this.state.dy / len) * this.speed;
+  }
+
+  setSpeed(speed: number) {
+    this.speed = speed;
   }
 
   getState(): BallState {

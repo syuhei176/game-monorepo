@@ -4,7 +4,7 @@ export interface PlayerState {
   w: number;
   h: number;
   offset: number;
-  state?: 'left' | 'right' | 'stop';
+  state?: "left" | "right" | "stop";
 }
 
 export interface BallState {
@@ -22,6 +22,7 @@ export interface Box {
   h: number;
   elem: any;
   deleted: boolean;
+  hp: number;
 }
 
-export type GamePhase = 'start' | 'main' | 'gameover' | 'gameclear';
+export type GamePhase = "start" | "main" | "gameover" | "gameclear";

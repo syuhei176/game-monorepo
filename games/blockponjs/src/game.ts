@@ -1,7 +1,7 @@
 import { Player } from "./entities/Player";
 import { Ball } from "./entities/Ball";
 import { BoxManager } from "./entities/BoxManager";
-import { ScoreManager } from "./managers/ScoreManager";
+import { ProgressManager } from "./managers/ProgressManager";
 import { InputManager } from "./managers/InputManager";
 import { PhaseManager } from "./managers/PhaseManager";
 
@@ -11,7 +11,7 @@ export class Game {
   private player: Player;
   private ball: Ball;
   private boxManager: BoxManager;
-  private scoreManager: ScoreManager;
+  private progressManager: ProgressManager;
   private inputManager: InputManager;
   private phaseManager: PhaseManager;
   private browserSize = {
@@ -32,7 +32,7 @@ export class Game {
     this.mainLayer.addChild(stageRect);
 
     // Initialize managers
-    this.scoreManager = new ScoreManager(this.stage, this.mainLayer);
+    this.progressManager = new ProgressManager(this.stage, this.mainLayer);
 
     // Initialize entities (they will be added to mainLayer)
     this.player = new Player(this.stage, this.mainLayer);
@@ -48,7 +48,7 @@ export class Game {
 
     // Apply scaling
     const scaleFactor = Math.min(
-      this.browserSize.width / 400,
+      this.browserSize.width / 500,
       this.browserSize.height / 700,
     );
     this.mainLayer.scale(scaleFactor, scaleFactor, 0, 0);
@@ -65,8 +65,10 @@ export class Game {
     this.phaseManager.hideStartScreen();
     this.phaseManager.setPhase("main");
 
-    this.scoreManager.resetScore();
-    this.boxManager.reset();
+    this.progressManager.resetScore();
+    const stage = this.progressManager.getCurrentStage();
+    this.ball.setSpeed(1.5 + stage * 0.5);
+    this.boxManager.reset(stage);
     this.ball.reset();
     this.player.reset();
   }
@@ -109,12 +111,12 @@ export class Game {
 
   private checkBoxCollision(): boolean {
     return this.boxManager.checkCollision(this.ball.getState(), () => {
-      this.scoreManager.addScore();
+      this.progressManager.addScore();
     });
   }
 
   private onPaddleHit() {
-    this.scoreManager.resetChain();
+    this.progressManager.resetChain();
   }
 
   private onGameOver() {
@@ -122,9 +124,16 @@ export class Game {
   }
 
   private onGameClear() {
-    this.scoreManager.checkAndSaveHighScore();
-    this.phaseManager.showGameClear(this.scoreManager.getScore(), () =>
-      this.startGame(),
-    );
+    this.progressManager.checkAndSaveHighScore();
+    const currentStage = this.progressManager.getCurrentStage();
+    const score = this.progressManager.getScore();
+
+    // Added a check for max stages, assuming 3 for now.
+    if (currentStage >= 3) {
+      this.phaseManager.showAllStagesClear(score, () => this.startGame());
+    } else {
+      this.progressManager.advanceStage();
+      this.phaseManager.showStageClear(currentStage, () => this.startGame());
+    }
   }
 }
