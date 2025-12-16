@@ -5,14 +5,21 @@ export class ScoreManager {
   private scoreText: any;
   private highScoreText: any;
 
-  constructor(private stage: any) {
+  constructor(
+    private stage: any,
+    mainLayer: any,
+  ) {
     this.highScore = this.loadScore();
     this.scoreText = stage.text(30, 10, `Score ${this.score}`, {
       fontColor: "#ffffff",
+      fontSize: 20,
     });
-    this.highScoreText = stage.text(120, 10, `High score ${this.highScore}`, {
+    this.highScoreText = stage.text(220, 10, `High score ${this.highScore}`, {
       fontColor: "#ffffff",
+      fontSize: 20,
     });
+    mainLayer.addChild(this.scoreText);
+    mainLayer.addChild(this.highScoreText);
   }
 
   addScore() {

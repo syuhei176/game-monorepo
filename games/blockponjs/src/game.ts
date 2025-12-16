@@ -23,15 +23,16 @@ export class Game {
     // @ts-ignore - acgraph is loaded globally from graphicsjs
     this.stage = acgraph.create("stage-container", "100%", "100%");
     this.mainLayer = this.stage.layer();
+    this.mainLayer.translate(0, 20);
 
     // Setup stage background first
-    const stageRect = this.stage.rect(30, 30, 340, 350);
+    const stageRect = this.stage.rect(30, 30, 340, 640);
     stageRect.fill("#303030");
     stageRect.stroke("#707070");
     this.mainLayer.addChild(stageRect);
 
     // Initialize managers
-    this.scoreManager = new ScoreManager(this.stage);
+    this.scoreManager = new ScoreManager(this.stage, this.mainLayer);
 
     // Initialize entities (they will be added to mainLayer)
     this.player = new Player(this.stage, this.mainLayer);
@@ -48,7 +49,7 @@ export class Game {
     // Apply scaling
     const scaleFactor = Math.min(
       this.browserSize.width / 400,
-      this.browserSize.height / 400,
+      this.browserSize.height / 700,
     );
     this.mainLayer.scale(scaleFactor, scaleFactor, 0, 0);
 
