@@ -38,7 +38,10 @@ export class InputState {
       default:
         return
     }
-    if (down) this.anyPressed = true
+    // Only a *fresh* press counts as "any pressed": holding a key fires repeated
+    // keydown events (e.repeat), which would otherwise keep the flag set and make
+    // the clear/game-over screen restart the instant it appears.
+    if (down && !e.repeat) this.anyPressed = true
   }
 
   private setJump(down: boolean): void {
@@ -61,6 +64,11 @@ export class InputState {
       return true
     }
     return false
+  }
+
+  /** Drops any pending fresh-press so it can't trigger an immediate restart. */
+  clearPressed(): void {
+    this.anyPressed = false
   }
 
   private buildTouchControls(parent: HTMLElement): void {

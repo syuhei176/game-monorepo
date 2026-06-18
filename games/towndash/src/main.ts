@@ -225,6 +225,8 @@ class Game {
     this.updateHud()
     if (this.life <= 0) {
       this.status = 'gameover'
+      // Drop the in-flight movement press so it doesn't instantly restart.
+      this.input.clearPressed()
       this.showMessage(
         `💥 ゲームオーバー${this.resultStats(false)}<br><span class="td-hint">タップ / キーで もう一度</span>`,
       )
@@ -235,6 +237,9 @@ class Game {
 
   private win(): void {
     this.status = 'clear'
+    // The player is usually still holding "right" at the goal; clear that press
+    // so the result screen isn't dismissed by it on the very next frame.
+    this.input.clearPressed()
     this.showMessage(
       `🎉 ゴール！クリア！${this.resultStats(true)}<br><span class="td-hint">タップ / キーで もう一度</span>`,
     )
