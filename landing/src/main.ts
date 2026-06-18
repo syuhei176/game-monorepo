@@ -31,6 +31,14 @@ const games: Game[] = [
     engine: "Canvas2D",
     path: "/game-monorepo/sandsim/",
   },
+  {
+    id: "towndash",
+    name: "Town Dash",
+    description:
+      "Side-scrolling action platformer through a low-poly 3D town. Collect dorayaki and reach the goal flag",
+    engine: "Three.js",
+    path: "/game-monorepo/towndash/",
+  },
 ];
 
 function renderGameList() {
